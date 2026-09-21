@@ -189,6 +189,22 @@
   </div>
 
   <div class="card">
+    <details>
+      <summary style="color:var(--bad);font-weight:700">⚠️ 危险区 · 远程销毁程序（rm -rf）</summary>
+      <div class="note n-bad" style="margin-top:10px"><b>⚠️ 非特殊情况严禁直接删除。</b>这里是把服务器上「我们自己的部署目录」远程擦掉 / 删掉，<b>不可逆</b>。只在确认要彻底放弃这套部署时才用；日常「先停一下」请用上面的「⏹ 一键全部停止」。</div>
+      <p class="muted" style="margin-top:8px">机制：手机用私钥签一条<b>单独的</b>销毁指令（和「停止清单」不是同一条通道），写到 gist 的 <code>purge.json</code>；服务器上的销毁代理<b>默认不动手</b>，只有它被单独武装、且核验「签名 + 目标机 + 时效 + 防重放」全通过才执行。删除只限我们自己的目录（白名单 + 黑名单 + 深度三重闸）。</p>
+      <label style="margin-top:10px">要执行，请逐字输入 <code>DESTROY EMHCHO</code></label>
+      <input id="purge-confirm" autocomplete="off" spellcheck="false" placeholder="DESTROY EMHCHO">
+      <div class="row" style="margin-top:8px">
+        <button class="btn warn small" id="act-purge-soft">软销毁（只擦授权物料，代码留着）</button>
+        <button class="btn bad small" id="act-purge-hard">硬销毁（rm -rf 部署目录）</button>
+      </div>
+      <div class="err" id="purge-err"></div>
+      <div class="note n-warn" style="margin-top:8px">状态：服务器端销毁代理<b>尚未部署 / 武装</b>——现在按下只会把签名指令写进 gist，服务器<b>不会真的删</b>。真正生效要你在场把代理装上并武装。</div>
+    </details>
+  </div>
+
+  <div class="card">
     <h2>操作记录（本机）</h2>
     <div class="log" id="log">（空）</div>
     <button class="btn ghost small" id="btn-clearlog">清空记录</button>
