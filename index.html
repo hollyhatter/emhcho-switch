@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#1e2a44">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>EMHCHO 远程开关</title>
+<style>
+  :root{
+    --bg:#f2f4f7; --card:#fff; --ink:#1a1d21; --ink2:#4a5058; --ink3:#767d86; --line:#e2e5ea;
+    --accent:#2b5fd9; --accent-soft:#eaf0fe;
+    --ok:#1a7f4b; --ok-bg:#e7f5ed; --warn:#9a6700; --warn-bg:#fff5da; --bad:#c0392b; --bad-bg:#fdeceb;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#111418; --card:#1a1f26; --ink:#e8ebef; --ink2:#c2c8d0; --ink3:#8b939d; --line:#2a313a;
+      --accent-soft:#1c2740; --ok-bg:#12301f; --warn-bg:#33290c; --bad-bg:#3a1714}
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,sans-serif;
+    font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  header{background:linear-gradient(135deg,#1e2a44,#2b3f68);color:#fff;
+    padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;justify-content:space-between}
+  header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.2px}
+  header .sub{font-size:12px;color:#b9c6e0;margin-top:2px}
+  header button{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:8px;padding:7px 11px;font-size:13px}
+  main{max-width:560px;margin:0 auto;padding:14px 14px 0}
+  .screen{display:none} .screen.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(20,30,50,.06)}
+  .card h2{margin:0 0 10px;font-size:16px}
+  .card p{margin:0 0 10px;color:var(--ink2);font-size:14px} .card p:last-child{margin-bottom:0}
+  .card,.card p,.kv,.note,.muted,.log,.err{overflow-wrap:anywhere;word-break:break-word}
+  code{word-break:break-all}
+  .row>*{min-width:0} .grid>*{min-width:0}
+  input.pin{letter-spacing:4px;font-size:18px}
+  label{display:block;font-size:13px;color:var(--ink3);margin:10px 0 4px}
+  input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;
+    background:var(--bg);color:var(--ink);font-family:var(--mono)}
+  input:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+  textarea{min-height:64px;resize:vertical}
+  .row{display:flex;gap:10px} .row>*{flex:1}
+  button.btn{width:100%;border:0;border-radius:12px;padding:14px 12px;font-size:16px;font-weight:600;color:#fff;
+    background:var(--accent);margin-top:12px;cursor:pointer}
+  button.btn:disabled{opacity:.55}
+  button.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+  button.btn.bad{background:var(--bad)} button.btn.ok{background:var(--ok)} button.btn.warn{background:var(--warn)}
+  button.btn.small{padding:10px 12px;font-size:14px;margin-top:8px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .grid button.btn{margin-top:0;min-height:64px;line-height:1.3}
+  .grid button.btn small{display:block;font-weight:400;font-size:12px;opacity:.85;margin-top:2px}
+  button.btn.huge{min-height:100px;font-size:23px;font-weight:800;border-radius:16px;margin-top:0}
+  button.btn.huge+button.btn.huge{margin-top:12px}
+  button.btn.huge small{display:block;font-weight:500;font-size:13.5px;opacity:.92;margin-top:7px}
+  .chip{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12.5px;font-weight:600;white-space:nowrap}
+  .c-ok{background:var(--ok-bg);color:var(--ok)} .c-warn{background:var(--warn-bg);color:var(--warn)}
+  .c-bad{background:var(--bad-bg);color:var(--bad)} .c-info{background:var(--accent-soft);color:var(--accent)}
+  .state{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .state .big{font-size:22px;font-weight:700}
+  .kv{font-size:13.5px;color:var(--ink2)} .kv b{color:var(--ink);font-weight:600}
+  .kv code{font-family:var(--mono);font-size:12.5px;background:var(--bg);padding:1px 5px;border-radius:5px}
+  .note{border-radius:10px;padding:10px 12px;font-size:13.5px;margin-top:10px}
+  .n-warn{background:var(--warn-bg);color:var(--ink2);border-left:4px solid var(--warn)}
+  .n-bad{background:var(--bad-bg);color:var(--ink2);border-left:4px solid var(--bad)}
+  .n-info{background:var(--accent-soft);color:var(--ink2);border-left:4px solid var(--accent)}
+  .n-ok{background:var(--ok-bg);color:var(--ink2);border-left:4px solid var(--ok)}
+  .err{color:var(--bad);font-size:13.5px;margin-top:8px;min-height:1.2em}
+  .log{font-family:var(--mono);font-size:12px;color:var(--ink2);max-height:220px;overflow:auto;
+    background:var(--bg);border-radius:10px;padding:10px;white-space:pre-wrap;word-break:break-all}
+  .muted{color:var(--ink3);font-size:12.5px}
+  .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    background:#1f2530;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;max-width:92vw;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.on{opacity:1}
+  .toast.bad{background:var(--bad)} .toast.ok{background:var(--ok)}
+  details summary{cursor:pointer;color:var(--accent);font-size:14px}
+  .pin{letter-spacing:8px;text-align:center;font-size:22px}
+  a{color:var(--accent)}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px}
+  .overlay.on{display:flex}
+  .modal{background:var(--card);border-radius:16px;padding:18px;max-width:420px;width:100%}
+  .modal h3{margin:0 0 8px;font-size:17px} .modal p{color:var(--ink2);font-size:14px;margin:0 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>EMHCHO 远程开关</h1>
+    <div class="sub" id="hdr-sub">吊销 / 恢复 生产授权</div>
+  </div>
+  <button id="btn-lock" style="display:none">🔒 锁定</button>
+</header>
+
+<main>
+
+<!-- ============================== 锁屏 ============================== -->
+<section class="screen" id="screen-lock">
+  <div class="card">
+    <h2>输入口令解锁</h2>
+    <p>私钥与 GitHub 令牌用这个口令加密保存在本机，不解锁什么都做不了。</p>
+    <input id="lock-pin" class="pin" type="password" autocomplete="off" autocapitalize="off" placeholder="••••••">
+    <div class="err" id="lock-err"></div>
+    <button class="btn" id="btn-unlock">解锁</button>
+    <details style="margin-top:14px">
+      <summary>忘记口令 / 换手机</summary>
+      <p class="muted" style="margin-top:8px">口令没有找回途径。只能擦掉本机数据、重新用 Mac 上的 seed.hex 和令牌配置一次。</p>
+      <button class="btn ghost small" id="btn-wipe-lock">擦除本机全部数据</button>
+    </details>
+  </div>
+</section>
+
+<!-- ============================== 首次配置 ============================== -->
+<section class="screen" id="screen-setup">
+  <div class="card">
+    <h2>首次配置</h2>
+    <p>把 Mac 上的两样东西装进手机：<b>签名私钥</b>（<code>~/.config/emhcho-license/seed.hex</code> 里那 64 个字符）和一个<b>只带 gist 权限</b>的 GitHub 令牌。保存时会用你设的 PIN 加密。</p>
+    <div class="note n-bad">你选的是「私钥进手机」方案：手机丢失、被云备份、被反编译、被人拿在手上 30 秒，私钥都可能泄露；一旦泄露对方能永久签发授权，补救只能全网换公钥重发牌。请务必：关掉这个 App 的云备份、每次都锁 PIN、令牌只给 gist 权限。</div>
+
+    <label>签名私钥 seed（64 个 hex 字符）</label>
+    <textarea id="su-seed" autocomplete="off" spellcheck="false" placeholder="例如 3f9a…（32 字节 hex）"></textarea>
+    <div class="kv" id="su-pubcheck"></div>
+
+    <label>期望的公钥（guard 里烧的 PUBKEY_HEX，用来核对 seed 贴对没有）</label>
+    <input id="su-pub" autocomplete="off" spellcheck="false" value="4eea0718b787e2ade797c0ea40f3c56ec9cdbd53f68a1a09269fd2a87e1797eb">
+
+    <label>GitHub 令牌（classic token，只勾 <code>gist</code> 一项）</label>
+    <input id="su-token" type="password" autocomplete="off" placeholder="ghp_…">
+    <p class="muted" style="margin-top:6px">保存前会读令牌的权限范围：除 <code>gist</code> 外还带别的权限（repo / admin / delete…）的令牌<b>一律拒收</b>——Mac 上那把全权限令牌不要贴进来。fine-grained 令牌不支持 gist，要用 classic。</p>
+
+    <div class="row">
+      <div><label>gist 所有者</label><input id="su-owner" autocomplete="off" value="hollyhatter"></div>
+      <div><label>gist ID</label><input id="su-gist" autocomplete="off" value="19d3a893c2b371616c756a014df2e760"></div>
+    </div>
+    <label>文件名</label>
+    <input id="su-file" autocomplete="off" value="revocation.json">
+
+    <div class="row">
+      <div><label>设一个解锁口令（至少 6 位）</label><input id="su-pin" class="pin" type="password" autocomplete="off" autocapitalize="off"></div>
+      <div><label>再输一次</label><input id="su-pin2" class="pin" type="password" autocomplete="off" autocapitalize="off"></div>
+    </div>
+    <p class="muted" style="margin-top:6px">口令是手机里私钥保险箱的<b>唯一</b>屏障：6 位纯数字只挡得住顺手翻手机的人，挡不住把数据拷走离线暴力破解的人。建议 <b>10 位以上、字母数字混合</b>。</p>
+    <div class="err" id="su-err"></div>
+    <button class="btn" id="btn-save">校验并加密保存到本机</button>
+    <p class="muted" style="margin-top:10px">保存前会先用 seed 推公钥、和上面的期望公钥比对；不一致不会保存。令牌会先向 GitHub 试读一次这个 gist，并核对权限范围只有 gist。</p>
+  </div>
+</section>
+
+<!-- ============================== 主界面 ============================== -->
+<section class="screen" id="screen-main">
+
+  <div class="card">
+    <div class="state">
+      <span class="big" id="st-big">…</span>
+      <span class="chip c-info" id="st-chip">读取中</span>
+    </div>
+    <div class="kv" id="st-detail">正在从 GitHub 读取当前吊销清单…</div>
+    <div class="kv" id="st-cdn" style="margin-top:6px"></div>
+    <button class="btn ghost small" id="btn-refresh">刷新状态</button>
+    <div class="note n-warn" id="note-warn">⚠️ 现在服务器是「只记录、不拦截」模式：按了停止只会被记下来，任务还会照跑。要真正停住，需在服务器把闸门从 <code>warn</code> 改成 <code>block</code>（你在场时做）。</div>
+  </div>
+
+  <div class="card">
+    <button class="btn bad huge" id="act-kill">⏹ 一键全部停止<small>所有卫星任务都不再启动 · 可随时恢复</small></button>
+    <button class="btn ok huge" id="act-clear">▶ 恢复运行<small>取消停止，让所有任务恢复</small></button>
+    <div class="err" id="act-err"></div>
+    <details style="margin-top:12px">
+      <summary>只停某一颗卫星 / 按牌号操作（高级）</summary>
+      <div class="grid" style="margin-top:10px">
+        <button class="btn bad" id="act-gf5b">停 GF5B<small>EMHCHO-GF5B · cron #17 #18</small></button>
+        <button class="btn bad" id="act-dq1">停 DQ1<small>EMHCHO-DQ1 · cron #21</small></button>
+      </div>
+      <label style="margin-top:14px">按牌号操作（lic_id，32 位 hex）</label>
+      <input id="act-licid" autocomplete="off" spellcheck="false" placeholder="4eb8d1224ec7c08126d753c171dc0aab">
+      <div class="row">
+        <button class="btn bad small" id="act-lic-revoke">吊销这张牌</button>
+        <button class="btn ghost small" id="act-lic-restore">恢复这张牌</button>
+      </div>
+      <p class="muted" style="margin-top:8px">已知：GF5B 牌 <code>af2e38332e0b26af42c8c0faa3c8e46b</code>，DQ1 牌 <code>4eb8d1224ec7c08126d753c171dc0aab</code>。</p>
+    </details>
+    <div class="note n-info">按下后：手机签名 → 写入 GitHub → 服务器 2–5 分钟内读到并生效；已经在跑的那一次不会被打断。</div>
+  </div>
+
+  <div class="card">
+    <h2>操作记录（本机）</h2>
+    <div class="log" id="log">（空）</div>
+    <button class="btn ghost small" id="btn-clearlog">清空记录</button>
+  </div>
+
+  <div class="card">
+    <h2>设置</h2>
+    <div class="kv">当前公钥：<code id="set-pub">—</code></div>
+    <div class="kv" style="margin-top:4px">gist：<code id="set-gist">—</code></div>
+    <div class="kv" style="margin-top:4px">网络：<span id="set-net">未测</span></div>
+    <div class="kv" style="margin-top:4px">运行方式：<span id="set-env">—</span></div>
+    <div class="row">
+      <button class="btn ghost small" id="btn-nettest">测一下能否连 GitHub</button>
+      <button class="btn ghost small" id="btn-changepin">修改口令</button>
+    </div>
+    <button class="btn ghost small" id="btn-wipe" style="border-color:var(--bad);color:var(--bad)">擦除本机全部数据（私钥、令牌、记录）</button>
+    <p class="muted" style="margin-top:10px">私钥与令牌只在解锁后驻留内存；切到后台或 3 分钟不操作自动锁定。本 App 不联网上传任何东西，只与 api.github.com / gist.githubusercontent.com 通信。Mac 上的 <code>gist_publish.py</code> 仍是主通道，这里是应急副手。</p>
+  </div>
+
+</section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- 通用确认框 -->
+<div class="overlay" id="ovl">
+  <div class="modal">
+    <h3 id="ovl-title">确认</h3>
+    <p id="ovl-text"></p>
+    <input id="ovl-input" autocomplete="off" style="display:none">
+    <div class="row">
+      <button class="btn ghost small" id="ovl-cancel">取消</button>
+      <button class="btn bad small" id="ovl-ok">确定</button>
+    </div>
+  </div>
+</div>
+
+<script src="nacl-fast.min.js"></script>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
