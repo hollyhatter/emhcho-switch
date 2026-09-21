@@ -3,7 +3,7 @@
  * 绝不碰跨域请求（api.github.com / gist.githubusercontent.com 一律直接走网络、不缓存）。
  * 改任何 www/ 文件后把 VERSION 加一，旧缓存会在 activate 时清掉。
  */
-const VERSION = "2026-09-21a";
+const VERSION = "2026-09-21b";
 const CACHE = "emhcho-shell-" + VERSION;
 const SHELL = ["./", "./index.html", "./core.js", "./app.js", "./nacl-fast.min.js",
   "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
