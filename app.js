@@ -296,6 +296,56 @@
     if (!/^[0-9a-f]{32}$/.test(id)) { $("act-err").textContent = "lic_id 应是 32 位 hex"; return; }
     applyChange(`恢复牌 ${id.slice(0, 8)}…`, (s) => { s.licIds.delete(id); return s; }, { danger: false, okText: "签名并恢复" });
   };
+  // ------------------------------------------------------- purge（危险） --
+  // 销毁走「单独签名的指令」：签一条独立 payload 写到 gist 的 purge.json（不是 revocation.json）。
+  // 服务器端销毁代理默认不动手，核验签名+目标机+时效+防重放全通过、且单独武装才执行。
+  function randNonce() { return C.bytesToHex(nacl.randomBytes(12)); }
+  async function publishPurge(kind) {
+    const obj = { purge: kind, target: "sthl-server:EMHCHO", as_of: C.nowIso(), nonce: randNonce() };
+    const token = C.makeToken(obj, C.hexToBytes(secrets.seedHex));
+    const chk = C.openToken(token, pubBytes());              // 写前自检：能被生产公钥打开
+    if (C.canonical(chk) !== C.canonical(obj)) throw new Error("本地自检失败：签名内容与预期不一致");
+    let r;
+    try {
+      r = await fetch(apiUrl(), {
+        method: "PATCH",
+        headers: { "Authorization": "Bearer " + secrets.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json" },
+        body: JSON.stringify({ files: { "purge.json": { content: token } } }),
+        cache: "no-store",
+      });
+    } catch (e) { throw new Error("连不上 api.github.com（" + e.message + "）"); }
+    if (!r.ok) throw new Error("写入 purge.json 失败：GitHub " + r.status);
+    return obj;
+  }
+  async function doPurge(kind) {
+    if (!secrets) return;
+    $("purge-err").textContent = "";
+    if ($("purge-confirm").value.trim() !== "DESTROY EMHCHO") { $("purge-err").textContent = "要逐字输入 DESTROY EMHCHO 才能继续"; return; }
+    const label = kind === "hard" ? "硬销毁（rm -rf 我们的部署目录，不可逆）" : "软销毁（只擦授权物料，代码留着）";
+    const ok = await confirmBox({
+      title: "远程销毁 · 二次确认",
+      text: `确定要签发【${label}】指令并写入 gist 吗？服务器端销毁代理若已武装，将在下一次运行时执行；未武装则不动手。此操作用于放弃部署，不是日常停用。`,
+      typed: "DESTROY EMHCHO", okText: "签发销毁指令",
+    });
+    if (!ok) return;
+    const btns = document.querySelectorAll("#screen-main button");
+    btns.forEach((b) => (b.disabled = true));
+    toast("正在签发销毁指令…");
+    try {
+      const obj = await publishPurge(kind);
+      log(`签发销毁指令 ${kind} → 写入 purge.json，as_of=${obj.as_of}，nonce=${obj.nonce.slice(0, 8)}…`);
+      toast("销毁指令已写入（服务器代理武装后才会执行）", "ok");
+      $("purge-confirm").value = "";
+    } catch (e) {
+      log(`签发销毁指令失败：${e.message}`);
+      $("purge-err").textContent = e.message; toast("失败：" + e.message, "bad");
+    } finally {
+      btns.forEach((b) => (b.disabled = false));
+    }
+  }
+  $("act-purge-soft").onclick = () => doPurge("soft");
+  $("act-purge-hard").onclick = () => doPurge("hard");
+
   $("btn-refresh").onclick = () => refresh().catch(() => {});
   $("btn-clearlog").onclick = () => { localStorage.removeItem(LS_LOG); renderLog(); };
   $("btn-lock").onclick = () => lock("");
